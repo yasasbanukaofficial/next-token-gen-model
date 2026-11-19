@@ -22,9 +22,6 @@ htmlcov/
 .DS_Store
 
 # Downloaded data (the dataset is fetched by URL)
-data/*
-!data/.gitkeep
-
-# Keep trained-model artifacts tracked
-!models/
-!artifacts/
+data/**
+!data/**/
+!data/**/.gitkeep
