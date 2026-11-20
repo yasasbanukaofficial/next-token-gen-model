@@ -1,245 +1,175 @@
-# next token gen model
+# next-token-gen-model
 
-A simple next word prediction project built with TensorFlow and Keras. The full workflow lives in `notebooks/Predictor_v1.ipynb`, together with the saved outputs from the original run.
+![Penguins](docs/assets/penguins.jpeg)
 
-It reads a public fake and real news dataset, turns article text into numbered tokens, learns from 10 word windows, saves the trained model, and then demonstrates prediction and text generation.
+A lightweight next-token language model built with TensorFlow and Keras. Implements word-level tokenization over a news corpus, maps sequences into sliding 10-word context windows, and trains a 2-layer LSTM recurrent neural network with an embedding layer to predict the subsequent token across a 14,389-word vocabulary. The project also demonstrates autoregressive sequence generation with adjustable top-$k$ sampling creativity. Everything is self-contained across two focused notebooks for training and inference, with pre-trained weights ready to run out of the box.
 
-## Flow by stage
-
-### Stage 1 Data analysis
-
-```mermaid
-%%{init: {"theme": "dark", "themeVariables": {"background": "#0b1220", "primaryColor": "#1e293b", "primaryTextColor": "#ffffff", "primaryBorderColor": "#64748b", "textColor": "#ffffff", "lineColor": "#cbd5e1", "fontSize": "15px", "edgeLabelBackground": "#0b1220"}}}%%
-flowchart LR
-    A["News CSV URL"] --> B["Download with pandas"]
-    B --> C["Load dataset"]
-    C --> D["Print shape"]
-    D --> E["Inspect first rows"]
-
-    classDef source fill:#172554,stroke:#60a5fa,color:#ffffff;
-    classDef process fill:#052e2b,stroke:#2dd4bf,color:#ffffff;
-    classDef result fill:#064e3b,stroke:#34d399,color:#ffffff;
-
-    class A source;
-    class B,C,D process;
-    class E result;
-```
-
-Recorded result: 6,335 rows and 3 columns. The columns are title, text, and label.
-
-### Stage 2 Data processing
-
-```mermaid
-%%{init: {"theme": "dark", "themeVariables": {"background": "#0b1220", "primaryColor": "#1e293b", "primaryTextColor": "#ffffff", "primaryBorderColor": "#64748b", "textColor": "#ffffff", "lineColor": "#cbd5e1", "fontSize": "15px", "edgeLabelBackground": "#0b1220"}}}%%
-flowchart LR
-    A["Text column"] --> B["Join articles"]
-    B --> C["Keep first 1000000 characters"]
-    C --> D["Lowercase text"]
-    D --> E["Extract word tokens"]
-    E --> F["Find unique tokens"]
-    F --> G["Map tokens to IDs"]
-
-    classDef source fill:#172554,stroke:#60a5fa,color:#ffffff;
-    classDef process fill:#052e2b,stroke:#2dd4bf,color:#ffffff;
-    classDef result fill:#064e3b,stroke:#34d399,color:#ffffff;
-
-    class A source;
-    class B,C,D,E,F process;
-    class G result;
-```
-
-This stage turns raw article text into a numbered vocabulary.
-
-### Stage 3 Training data
-
-```mermaid
-%%{init: {"theme": "dark", "themeVariables": {"background": "#0b1220", "primaryColor": "#1e293b", "primaryTextColor": "#ffffff", "primaryBorderColor": "#64748b", "textColor": "#ffffff", "lineColor": "#cbd5e1", "fontSize": "15px", "edgeLabelBackground": "#0b1220"}}}%%
-flowchart LR
-    A["Token list"] --> B["Take 10 words"]
-    B --> C["Next word as target"]
-    C --> D["Slide window forward"]
-    D --> E["Input words"]
-    E --> F["X array"]
-    C --> G["Next words"]
-    G --> H["y array"]
-
-    classDef source fill:#172554,stroke:#60a5fa,color:#ffffff;
-    classDef process fill:#052e2b,stroke:#2dd4bf,color:#ffffff;
-    classDef result fill:#064e3b,stroke:#34d399,color:#ffffff;
-
-    class A source;
-    class B,C,D,E,G process;
-    class F,H result;
-```
-
-Recorded result: X shape is 169677 by 10 and y shape is 169677.
-
-### Stage 4 Model building
-
-```mermaid
-%%{init: {"theme": "dark", "themeVariables": {"background": "#0b1220", "primaryColor": "#1e293b", "primaryTextColor": "#ffffff", "primaryBorderColor": "#64748b", "textColor": "#ffffff", "lineColor": "#cbd5e1", "fontSize": "15px", "edgeLabelBackground": "#0b1220"}}}%%
-flowchart LR
-    A["Vocabulary size"] --> B["Input for 10 words"]
-    B --> C["Token embedding"]
-    C --> D["First recurrent layer"]
-    D --> E["Second recurrent layer"]
-    E --> F["Output layer"]
-    F --> G["Probability scores"]
-
-    classDef source fill:#172554,stroke:#60a5fa,color:#ffffff;
-    classDef process fill:#2e1065,stroke:#c084fc,color:#ffffff;
-    classDef result fill:#064e3b,stroke:#34d399,color:#ffffff;
-
-    class A source;
-    class B,C,D,E,F process;
-    class G result;
-```
-
-The model ends with a probability score for every known word.
-
-### Stage 5 Training
-
-```mermaid
-%%{init: {"theme": "dark", "themeVariables": {"background": "#0b1220", "primaryColor": "#1e293b", "primaryTextColor": "#ffffff", "primaryBorderColor": "#64748b", "textColor": "#ffffff", "lineColor": "#cbd5e1", "fontSize": "15px", "edgeLabelBackground": "#0b1220"}}}%%
-flowchart LR
-    A["X and y arrays"] --> B["Compile model"]
-    B --> C["Set batch size 128"]
-    C --> D["Train 30 epochs"]
-    D --> E["Record accuracy"]
-    D --> F["Record loss"]
-
-    classDef source fill:#172554,stroke:#60a5fa,color:#ffffff;
-    classDef process fill:#2e1065,stroke:#c084fc,color:#ffffff;
-    classDef result fill:#064e3b,stroke:#34d399,color:#ffffff;
-
-    class A source;
-    class B,C,D process;
-    class E,F result;
-```
-
-Recorded result: first epoch accuracy 0.0747 and loss 7.0795. Final epoch accuracy 0.1592 and loss 5.9869.
-
-### Stage 6 Saving
-
-```mermaid
-%%{init: {"theme": "dark", "themeVariables": {"background": "#0b1220", "primaryColor": "#1e293b", "primaryTextColor": "#ffffff", "primaryBorderColor": "#64748b", "textColor": "#ffffff", "lineColor": "#cbd5e1", "fontSize": "15px", "edgeLabelBackground": "#0b1220"}}}%%
-flowchart LR
-    A["Trained model"] --> B["Save Keras file"]
-    A --> C["Save history pickle"]
-    B --> D["keras_next_word_model.keras"]
-    C --> E["history.p"]
-
-    classDef source fill:#172554,stroke:#60a5fa,color:#ffffff;
-    classDef process fill:#052e2b,stroke:#2dd4bf,color:#ffffff;
-    classDef result fill:#064e3b,stroke:#34d399,color:#ffffff;
-
-    class A source;
-    class B,C process;
-    class D,E result;
-```
-
-Artifacts are kept so training does not need to run again.
-
-### Stage 7 Inference
-
-```mermaid
-%%{init: {"theme": "dark", "themeVariables": {"background": "#0b1220", "primaryColor": "#1e293b", "primaryTextColor": "#ffffff", "primaryBorderColor": "#64748b", "textColor": "#ffffff", "lineColor": "#cbd5e1", "fontSize": "15px", "edgeLabelBackground": "#0b1220"}}}%%
-flowchart LR
-    A["User phrase"] --> B["Tokenize text"]
-    B --> C["Map words to IDs"]
-    C --> D["Pad to 10 words"]
-    D --> E["Model predicts"]
-    E --> F["Sort probabilities"]
-    F --> G["Top words"]
-    G --> H["Append and repeat"]
-
-    classDef source fill:#172554,stroke:#60a5fa,color:#ffffff;
-    classDef process fill:#052e2b,stroke:#2dd4bf,color:#ffffff;
-    classDef result fill:#064e3b,stroke:#34d399,color:#ffffff;
-
-    class A source;
-    class B,C,D,E,F,G process;
-    class H result;
-```
-
-### How one prediction travels
-
-```mermaid
-%%{init: {"theme": "dark", "themeVariables": {"background": "#0b1220", "primaryTextColor": "#ffffff", "textColor": "#ffffff", "actorBkg": "#1e293b", "actorBorder": "#64748b", "actorTextColor": "#ffffff", "actorLineColor": "#cbd5e1", "signalColor": "#cbd5e1", "signalTextColor": "#ffffff", "labelBoxBkgColor": "#1e293b", "labelBoxBorderColor": "#64748b", "labelTextColor": "#ffffff"}}}%%
-sequenceDiagram
-    participant U as You
-    participant N as Notebook
-    participant M as Trained model
-
-    U->>N: Type a phrase
-    N->>N: Tokenize and map words to IDs
-    N->>M: Send 10 word input
-    M-->>N: Probabilities over vocabulary
-    N-->>U: Show ranked next words
-```
-
-## Example output
-
-**Top five predictions after "I will"**
-
-1. **be**
-2. **have**
-3. **help**
-4. **only**
-5. **take**
-
-**Generated continuation**
-
-> **I will have killed a syrian turkish fighters forces and the united new minister old line on**
-
-The generated sentence is rough, but it demonstrates the full loop: predict one word, append it, and predict again. The creativity setting controls how many top candidates are considered, so higher values give more varied output.
-
-## Tech Stack
-
-**Python** 3.12
-
-**TensorFlow and Keras** model building and training
-
-**NumPy and pandas** data handling
-
-**NLTK** tokenization
-
-**uv** environment and dependency management
-
-## Project Structure
-
-```text
-README.md                          this documentation
-pyproject.toml                     project metadata and dependencies
-uv.lock                            locked dependency versions
-Python version pin                 Python version used by uv
-notebooks/Predictor_v1.ipynb       full notebook workflow
-models/keras_next_word_model.keras trained Keras model
-models/history.p                   pickled training history
-```
-
-The dataset is downloaded from a URL inside the notebook and is not stored in this repository.
-
-## Setup
+### Installation
 
 ```bash
+git clone https://github.com/yasasbanukaofficial/next-token-gen-model.git
+cd next-token-gen-model
 uv sync
 ```
 
-Dependencies are declared in `pyproject.toml` and locked in `uv.lock`. There is no `requirements.txt`.
+### Example usage
 
-## Run the notebook
+Below is a self-contained snippet demonstrating how to load the pre-trained model and predict the most probable next words:
 
-```bash
-uv run jupyter notebook notebooks/Predictor_v1.ipynb
+```python
+import pickle
+import numpy as np
+from tensorflow.keras.models import load_model
+
+model = load_model('models/keras_next_word_model.keras')
+
+with open('data/processed/unique_tokens.p', 'rb') as f:
+    unique_tokens = pickle.load(f)
+with open('data/processed/unique_token_idx.p', 'rb') as f:
+    unique_token_idx = pickle.load(f)
+
+# Predict top 5 candidates for "I will"
+words = "I will".lower().split()[-10:]
+token_ids = [unique_token_idx.get(w, 0) for w in words]
+X = np.array([[0] * (10 - len(token_ids)) + token_ids])
+
+predictions = model.predict(X, verbose=0)[0]
+top_5 = np.argsort(predictions)[-5:][::-1]
+
+for idx in top_5:
+    print(unique_tokens[idx])
+# prints: be, have, help, only, take
 ```
 
-Run the cells in order. Data analysis and preparation are quick. The training cell takes about 90 minutes on the original machine.
+### Text generation
 
-## Dataset credit
+The inference notebook `notebooks/text_generation.ipynb` demonstrates autoregressive generation: predicting the next token, appending it to the sequence, and repeating for a desired length. With an input prompt `"I will"` and creativity $k=2$:
 
-The news dataset used by the notebook is the Fake and Real News Dataset shared by lutzhamel on GitHub. Thanks to the provider for making the data publicly available.
+> **I will have killed a syrian turkish fighters forces and the united new minister old line on**
 
-Source: https://github.com/lutzhamel/fake-news/blob/master/data/fake_or_real_news.csv
+### Training the model
 
-Copyright © 2026 Yasas Banu · [GitHub](https://github.com/yasasbanukaofficial) · [LinkedIn](https://www.linkedin.com/in/yasasbanukagunasena/) · [Website](https://www.yasasbanuka.tech/)
+The training pipeline in `notebooks/model_training.ipynb` downloads the Fake and Real News Dataset (6,335 articles), extracts the first 1,000,000 characters, builds a 14,389-word vocabulary, and generates 169,677 training pairs $(X, y)$ with a 10-word sliding window. 
+
+The architecture consists of an `Embedding(14389, 128)` layer, two stacked `LSTM(128)` layers, and a `Dense(14389, activation='softmax')` head totaling 3.96M trainable parameters. The model is compiled with RMSprop and categorical cross-entropy, and trained for 30 epochs with batch size 128:
+
+- **Epoch 1/30**: Loss: 7.0795 — Accuracy: 0.0747
+- **Epoch 30/30**: Loss: 5.9869 — Accuracy: 0.1592
+
+Trained artifacts are persisted to `models/keras_next_word_model.keras` and `models/train_history/history_v1.p`.
+
+### How it works
+
+Traditional programming requires manually specifying logic and rules. In machine learning, the model discovers the underlying statistical patterns directly from data:
+
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"background": "#F4F4F1", "primaryColor": "#FFFFFF", "primaryTextColor": "#141414", "primaryBorderColor": "#141414", "lineColor": "#141414", "textColor": "#141414", "fontSize": "14px", "fontFamily": "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"}}}%%
+flowchart TB
+    subgraph cards[" "]
+        direction LR
+
+        subgraph trad["Traditional Programming"]
+            direction TB
+            subgraph trad_flow[" "]
+                direction LR
+                T1("Data + Rules") --> T2(["Program"]) --> T3("Output")
+            end
+            trad_desc["Humans manually write explicit rules."]
+            T2 ~~~ trad_desc
+        end
+
+        subgraph ml["Machine Learning"]
+            direction TB
+            subgraph ml_flow[" "]
+                direction LR
+                M1("Data + Output") --> M2(["ML Model"]) --> M3("Rules")
+            end
+            ml_desc["Algorithms learn patterns directly from examples."]
+            M2 ~~~ ml_desc
+        end
+    end
+
+    style cards fill:none,stroke:none;
+    style trad fill:#FFFFFF,stroke:#141414,stroke-width:2px,rx:14,ry:14,color:#141414;
+    style trad_flow fill:#F4F4F1,stroke:none,rx:8,ry:8;
+    style ml fill:#FEF59E,stroke:#141414,stroke-width:2px,rx:14,ry:14,color:#141414;
+    style ml_flow fill:#FFFFFF,stroke:none,rx:8,ry:8;
+
+    classDef itemTrad fill:#F4F4F1,stroke:#141414,stroke-width:1.5px,color:#141414,font-weight:600;
+    classDef itemML fill:#FFFFFF,stroke:#141414,stroke-width:1.5px,color:#141414,font-weight:600;
+    classDef badge fill:#141414,stroke:#141414,stroke-width:2px,color:#FFFFFF,font-weight:bold;
+    classDef note fill:none,stroke:none,color:#555555,font-size:12px;
+
+    class T1,T3 itemTrad;
+    class T2 badge;
+    class trad_desc note;
+
+    class M1,M3 itemML;
+    class M2 badge;
+    class ml_desc note;
+
+    linkStyle default stroke:#141414,stroke-width:1.5px;
+```
+
+### Tracing / pipeline visualization
+
+How an input phrase travels through tokenization, context padding, 2-layer LSTM inference, and top-$k$ candidate selection:
+
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"background": "#F4F4F1", "primaryColor": "#FFFFFF", "primaryTextColor": "#141414", "primaryBorderColor": "#141414", "lineColor": "#141414", "textColor": "#141414", "fontSize": "14px", "fontFamily": "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", "edgeLabelBackground": "#F4F4F1"}}}%%
+flowchart LR
+    A("Type phrase (You)") --> B("Tokenize & map to IDs (Notebook)")
+    B --> C("Send 10-word input")
+    C --> D(["Trained model"])
+    D --> E("Probabilities over vocabulary")
+    E --> F(["Show ranked next words (You)"])
+
+    classDef source fill:#FFFFFF,stroke:#141414,stroke-width:1.5px,color:#141414,font-weight:600;
+    classDef process fill:#FFFFFF,stroke:#141414,stroke-width:1.5px,color:#141414;
+    classDef key fill:#141414,stroke:#141414,stroke-width:2px,color:#FFFFFF,font-weight:bold;
+    classDef result fill:#FEF59E,stroke:#141414,stroke-width:1.5px,color:#141414,font-weight:600;
+
+    class A source;
+    class B,C,E process;
+    class D key;
+    class F result;
+
+    linkStyle default stroke:#141414,stroke-width:1.5px;
+```
+
+### Project structure
+
+```text
+├── data/
+│   └── processed/
+│       ├── unique_tokens.p           # vocabulary word list (14,389 tokens)
+│       └── unique_token_idx.p        # word-to-index mapping
+├── models/
+│   ├── keras_next_word_model.keras   # trained 2-layer LSTM model weights
+│   └── train_history/history_v1.p    # training loss & accuracy metrics
+├── notebooks/
+│   ├── model_training.ipynb          # dataset prep, tokenization & 30-epoch training
+│   └── text_generation.ipynb         # top-k next-token prediction & autoregressive sampling
+├── docs/assets/                      # project imagery & reference diagrams
+├── pyproject.toml                    # dependencies & project configuration
+└── uv.lock                           # reproducible locked environment
+```
+
+### Running the notebooks
+
+Launch Jupyter via `uv`:
+
+```bash
+uv run jupyter notebook notebooks/text_generation.ipynb
+```
+
+Run the cells in order. Data preparation is fast; training from scratch in `model_training.ipynb` takes ~90 minutes on CPU.
+
+### Dataset credit
+
+The news dataset used by the training notebook is the Fake and Real News Dataset shared by lutzhamel on GitHub. Thanks to the author for making the data publicly available:
+https://github.com/lutzhamel/fake-news/blob/master/data/fake_or_real_news.csv
+
+### License
+
+MIT · Copyright © 2026 Yasas Banu · [GitHub](https://github.com/yasasbanukaofficial) · [LinkedIn](https://www.linkedin.com/in/yasasbanukagunasena/) · [Website](https://www.yasasbanuka.tech/)
