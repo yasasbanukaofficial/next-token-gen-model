@@ -25,3 +25,4 @@ htmlcov/
 data/**
 !data/**/
 !data/**/.gitkeep
+!data/raw/fake_or_real_news.csv

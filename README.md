@@ -141,6 +141,8 @@ flowchart LR
 
 ```text
 ├── data/
+│   ├── raw/
+│   │   └── fake_or_real_news.csv     # source news dataset (6,335 articles)
 │   └── processed/
 │       ├── unique_tokens.p           # vocabulary word list (14,389 tokens)
 │       └── unique_token_idx.p        # word-to-index mapping
